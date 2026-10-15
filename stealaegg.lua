@@ -1,5 +1,5 @@
 -- ====================================================
--- سكربت سرقة البيض النظيف | Steal An Egg
+-- سكربت السرعة والقفز اللانهائي | Mero Uchiha Hub
 -- المطور: مـــيـــرو اوتـــــــــشيها (Mero Uchiha)
 -- ====================================================
 
@@ -8,89 +8,39 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local PromptService = game:GetService("ProximityPromptService")
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 
--- نسخ رابط الديسكورد تلقائياً للحافظة عند التشغيل
+-- نسخ رابط الديسكورد تلقائياً للحافظة
 pcall(function()
     if setclipboard then
         setclipboard("https://discord.gg/E7BTbVBsGy")
     end
     StarterGui:SetCore("SendNotification", {
         Title = "📋 Discord Copied!",
-        Text = "تم نسخ رابط سيرفر الديسكورد إلى الحافظة تلقائياً!",
+        Text = "تم نسخ رابط سيرفر الديسكورد تلقائياً!",
         Duration = 5
     })
 end)
 
-local SilentSleepActive = false
-local SavedHoldDurations = {}
-local ActiveConnections = {}
+local SpeedActive = false
+local InfJumpActive = false
+local SpeedMultiplier = 1.5
 
--- وظيفة تعديل الـ Prompts لتصير الفورية بدون تأخير
-local function PatchPrompt(Prompt)
-    if not (Prompt and typeof(Prompt) == "Instance" and Prompt:IsA("ProximityPrompt")) then
-        return
-    end
-    if SilentSleepActive then
-        if SavedHoldDurations[Prompt] == nil then
-            SavedHoldDurations[Prompt] = Prompt.HoldDuration
-        end
-        Prompt.HoldDuration = 0
-        Prompt.RequiresLineOfSight = false
-    elseif SavedHoldDurations[Prompt] ~= nil then
-        Prompt.HoldDuration = SavedHoldDurations[Prompt]
-        SavedHoldDurations[Prompt] = nil
-    end
-end
-
-local function SetPromptPatch(enabled)
-    if enabled then
-        for _, item in ipairs(Workspace:GetDescendants()) do
-            PatchPrompt(item)
-        end
-        table.insert(ActiveConnections, Workspace.DescendantAdded:Connect(PatchPrompt))
-        table.insert(ActiveConnections, PromptService.PromptShown:Connect(PatchPrompt))
-    else
-        for _, Connection in ipairs(ActiveConnections) do
-            if Connection then Connection:Disconnect() end
-        end
-        ActiveConnections = {}
-        for Prompt, duration in pairs(SavedHoldDurations) do
-            if Prompt and Prompt.Parent then
-                Prompt.HoldDuration = duration
-            end
-        end
-        SavedHoldDurations = {}
-    end
-end
-
-local function ToggleSilentSleep(state)
-    SilentSleepActive = state
-    SetPromptPatch(state)
-end
-
--- ====================================================
--- بناء الواجهة الخفيفة والمرتبة
--- ====================================================
-
-if CoreGui:FindFirstChild("MeroEggHub") then
-    CoreGui.MeroEggHub:Destroy()
+-- بناء الواجهة
+if CoreGui:FindFirstChild("MeroSpeedHub") then
+    CoreGui.MeroSpeedHub:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MeroEggHub"
+ScreenGui.Name = "MeroSpeedHub"
 ScreenGui.Parent = CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-MainFrame.BorderSizePixel = 0
 MainFrame.Position = UDim2.new(0.5, -140, 0.5, -110)
-MainFrame.Size = UDim2.new(0, 280, 0, 180)
+MainFrame.Size = UDim2.new(0, 280, 0, 210)
 MainFrame.ClipsDescendants = true
 
 local MainCorner = Instance.new("UICorner")
@@ -103,126 +53,102 @@ MainStroke.Color = Color3.fromRGB(138, 43, 226)
 MainStroke.Thickness = 2
 
 local TitleFrame = Instance.new("Frame")
-TitleFrame.Name = "TitleFrame"
 TitleFrame.Parent = MainFrame
 TitleFrame.BackgroundColor3 = Color3.fromRGB(30, 33, 45)
-TitleFrame.BorderSizePixel = 0
-TitleFrame.Size = UDim2.new(1, 0, 0, 45)
+TitleFrame.Size = UDim2.new(1, 0, 0, 40)
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Name = "TitleLabel"
 TitleLabel.Parent = TitleFrame
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.Size = UDim2.new(1, -30, 1, 0)
 TitleLabel.Font = Enum.Font.FredokaOne
-TitleLabel.Text = "🥚 Steal An Egg | Mero"
+TitleLabel.Text = "⚡ Mero Uchiha Hub"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 TitleLabel.TextSize = 15
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- زر الإخفاء والإظهار العائم
-local OpenCloseBtn = Instance.new("TextButton")
-OpenCloseBtn.Name = "OpenCloseBtn"
-OpenCloseBtn.Parent = ScreenGui
-OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(30, 33, 45)
-OpenCloseBtn.Position = UDim2.new(0, 10, 0.5, -25)
-OpenCloseBtn.Size = UDim2.new(0, 45, 0, 45)
-OpenCloseBtn.Font = Enum.Font.FredokaOne
-OpenCloseBtn.Text = "🥚"
-OpenCloseBtn.TextSize = 22
-OpenCloseBtn.Draggable = true
+-- زر السرعة الخارقة
+local SpeedBtn = Instance.new("TextButton")
+SpeedBtn.Parent = MainFrame
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 52)
+SpeedBtn.Position = UDim2.new(0, 15, 0, 55)
+SpeedBtn.Size = UDim2.new(1, -30, 0, 45)
+SpeedBtn.Font = Enum.Font.GothamBold
+SpeedBtn.Text = "  سرعة خارقة ⚡"
+SpeedBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+SpeedBtn.TextSize = 14
+SpeedBtn.TextXAlignment = Enum.TextXAlignment.Left
 
-local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 22)
-BtnCorner.Parent = OpenCloseBtn
+local BtnUICorner1 = Instance.new("UICorner")
+BtnUICorner1.CornerRadius = UDim.new(0, 8)
+BtnUICorner1.Parent = SpeedBtn
 
-local BtnStroke = Instance.new("UIStroke")
-BtnStroke.Parent = OpenCloseBtn
-BtnStroke.Color = Color3.fromRGB(138, 43, 226)
-BtnStroke.Thickness = 2
-
-OpenCloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
--- سحب الواجهة
-local dragging, dragInput, dragStart, startPos
-TitleFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
-
--- زر التفعيل وتغيير الاسم
-local Button = Instance.new("TextButton")
-Button.Name = "ToggleBtn"
-Button.Parent = MainFrame
-Button.BackgroundColor3 = Color3.fromRGB(35, 38, 52)
-Button.BorderSizePixel = 0
-Button.Position = UDim2.new(0, 15, 0, 65)
-Button.Size = UDim2.new(1, -30, 0, 50)
-Button.AutoButtonColor = false
-Button.Font = Enum.Font.GothamBold
-Button.Text = "  إبقاء الحيوان نائم 😴⚡"
-Button.TextColor3 = Color3.fromRGB(220, 220, 220)
-Button.TextSize = 14
-Button.TextXAlignment = Enum.TextXAlignment.Left
-
-local BtnUICorner = Instance.new("UICorner")
-BtnUICorner.CornerRadius = UDim.new(0, 8)
-BtnUICorner.Parent = Button
-
-local StatusBox = Instance.new("Frame")
-StatusBox.Name = "StatusBox"
-StatusBox.Parent = Button
-StatusBox.AnchorPoint = Vector2.new(1, 0.5)
-StatusBox.Position = UDim2.new(1, -12, 0.5, 0)
-StatusBox.Size = UDim2.new(0, 45, 0, 24)
-StatusBox.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-
-local StatusCorner = Instance.new("UICorner")
-StatusCorner.CornerRadius = UDim.new(0, 12)
-StatusCorner.Parent = StatusBox
-
--- نقطة التفعيل
-local Dot = Instance.new("Frame")
-Dot.Name = "Dot"
-Dot.Parent = StatusBox
-Dot.AnchorPoint = Vector2.new(0, 0.5)
-Dot.Position = UDim2.new(0, 3, 0.5, 0)
-Dot.Size = UDim2.new(0, 18, 0, 18)
-Dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-
-local DotCorner = Instance.new("UICorner")
-DotCorner.CornerRadius = UDim.new(0, 9)
-DotCorner.Parent = Dot
-
-local isToggled = false
-
-Button.MouseButton1Click:Connect(function()
-    isToggled = not isToggled
-    
-    if isToggled then
-        TweenService:Create(StatusBox, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 255, 128)}):Play()
-        TweenService:Create(Dot, TweenInfo.new(0.2), {Position = UDim2.new(1, -21, 0.5, 0)}):Play()
+SpeedBtn.MouseButton1Click:Connect(function()
+    SpeedActive = not SpeedActive
+    if SpeedActive then
+        SpeedBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
+        SpeedBtn.Text = "  سرعة خارقة [شغال] ⚡"
     else
-        TweenService:Create(StatusBox, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 60, 60)}):Play()
-        TweenService:Create(Dot, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, 0)}):Play()
+        SpeedBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+        SpeedBtn.Text = "  سرعة خارقة [متوقف] ⚡"
     end
+end)
 
-    ToggleSilentSleep(isToggled)
+-- زر القفز اللانهائي
+local InfJumpBtn = Instance.new("TextButton")
+InfJumpBtn.Parent = MainFrame
+InfJumpBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 52)
+InfJumpBtn.Position = UDim2.new(0, 15, 0, 115)
+InfJumpBtn.Size = UDim2.new(1, -30, 0, 45)
+InfJumpBtn.Font = Enum.Font.GothamBold
+InfJumpBtn.Text = "  قفز لانهائي 🦘"
+InfJumpBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+InfJumpBtn.TextSize = 14
+InfJumpBtn.TextXAlignment = Enum.TextXAlignment.Left
+
+local BtnUICorner2 = Instance.new("UICorner")
+BtnUICorner2.CornerRadius = UDim.new(0, 8)
+BtnUICorner2.Parent = InfJumpBtn
+
+InfJumpBtn.MouseButton1Click:Connect(function()
+    InfJumpActive = not InfJumpActive
+    if InfJumpActive then
+        InfJumpBtn.TextColor3 = Color3.fromRGB(0, 255, 128)
+        InfJumpBtn.Text = "  قفز لانهائي [شغال] 🦘"
+    else
+        InfJumpBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+        InfJumpBtn.Text = "  قفز لانهائي [متوقف] 🦘"
+    end
+end)
+
+-- تنفيذ السرعة
+RunService.Heartbeat:Connect(function()
+    if SpeedActive then
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if hum and root and hum.MoveDirection.Magnitude > 0 then
+                    root.CFrame = root.CFrame + (hum.MoveDirection * SpeedMultiplier * 0.5)
+                end
+            end
+        end)
+    end
+end)
+
+-- تنفيذ القفز اللانهائي عند الضغط على زر المسافة (Space)
+UserInputService.JumpRequest:Connect(function()
+    if InfJumpActive then
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+        end)
+    end
 end)
